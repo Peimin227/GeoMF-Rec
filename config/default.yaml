@@ -1,0 +1,20 @@
+# config/default.yaml
+
+# 数据路径（可根据实际路径调整）
+data:
+  raw_dir: data/raw
+  proc_dir: data/processed
+
+# 网格划分参数
+grid:
+  delta_lat: 0.1   # 原来是 0.01°
+  delta_lon: 0.1
+  sigma:     0.2   # 相应放大
+  radius:    3
+
+# 模型超参（后续训练时会用到，可先给个默认值）
+model:
+  K: 50
+  gamma: 0.01
+  lambda: 0.1
+  max_iter: 20
