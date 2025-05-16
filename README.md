@@ -20,6 +20,16 @@ pip install -r requirements.txt
 
 ---
 
+## Download Data
+
+1. Go to the Yelp Academic Dataset page:  
+   https://www.yelp.com/dataset  
+2. Download the latest `yelp_academic_dataset.zip`.  
+3. Unzip and copy the JSON files into `data/raw/`:
+   ```bash
+   unzip yelp_academic_dataset.zip -d data/raw/
+4. Since,  `yelp_academic_review.json` and `yelp_academic_tips.json` have similar meaning to our project, we drop the `yelp_academic_tips.json`
+
 ## Data Preparation
 
 Place the Yelp JSON files under `data/raw/`:

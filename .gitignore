@@ -5,4 +5,5 @@ __pycache__/
 data/processed/
 *.npz
 .ipynb_checkpoints/
-.vscode/
+.vscode/# ignore processed data
+/data/processed/
