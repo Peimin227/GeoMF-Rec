@@ -1,6 +1,7 @@
 # src/model/geo_mf.py
 
 import torch
+from tqdm import tqdm
 
 class GeoMFPTStrict:
     """
@@ -28,7 +29,7 @@ class GeoMFPTStrict:
         X = torch.zeros(M, L, device=self.device)
         I_K = torch.eye(self.K, device=self.device)
 
-        for it in range(self.max_iter):
+        for it in tqdm(range(self.max_iter), desc="Training Epochs"):
             # Effective residual
             R_eff = R - X @ Y.t()
 
@@ -43,8 +44,12 @@ class GeoMFPTStrict:
                 Q_idx = Q[idx]                        # (nu, K)
                 # A = Q_idx^T diag(w) Q_idx + gamma I
                 A = Q_idx.t() @ (w_u_idx.unsqueeze(1) * Q_idx) + self.gamma * I_K
+                # add small jitter to diagonal to avoid singular matrix
+                A = A + torch.eye(self.K, device=self.device) * 1e-4
                 b = (r_eff_u * w_u_idx) @ Q_idx       # (K,)
-                P[u] = torch.linalg.solve(A, b)
+                # robust solve: use least-squares to handle singular A
+                sol = torch.linalg.lstsq(A, b.unsqueeze(1)).solution
+                P[u] = sol.squeeze(1)
 
             # 2) Update Q via weighted ALS
             for i in range(N):
@@ -56,8 +61,12 @@ class GeoMFPTStrict:
                 w_i_idx = w_i[idx]                    # (mi,)
                 P_idx = P[idx]                        # (mi, K)
                 A = P_idx.t() @ (w_i_idx.unsqueeze(1) * P_idx) + self.gamma * I_K
+                # add small jitter to diagonal to avoid singular matrix
+                A = A + torch.eye(self.K, device=self.device) * 1e-4
                 b = (r_eff_i * w_i_idx) @ P_idx       # (K,)
-                Q[i] = torch.linalg.solve(A, b)
+                # robust solve: use least-squares to handle singular A
+                sol = torch.linalg.lstsq(A, b.unsqueeze(1)).solution
+                Q[i] = sol.squeeze(1)
 
             # 3) Update X via projected gradient
             for u in range(M):

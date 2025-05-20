@@ -1,109 +1,115 @@
 #!/usr/bin/env python3
-# train.py
-
 import argparse
-import numpy as np
 import scipy.sparse as sp
 import torch
-from torch.optim.lr_scheduler import StepLR
+import numpy as np
+from src.model.geo_mf import GeoMFPTStrict
 from tqdm import tqdm
-from scipy.sparse import csr_matrix
+import time
+from torch.utils.data import Dataset, DataLoader
+import random
 
-def train_pytorch_mb(R, W, Y, M, N, L,
-                     K, gamma, lam, lr,
-                     epochs, batch_size,
-                     num_negatives=5,
-                     lr_step_size=10,
-                     lr_gamma=0.5,
-                     device='cpu'):
-    """
-    R, W: scipy.sparse CSR of shape (M,N)
-    Y:     scipy.sparse CSR of shape (N,L)
-    """
-    # 1) 参数初始化（叶子张量）
-    P = torch.randn(M, K, device=device, requires_grad=True)
-    with torch.no_grad(): P.mul_(0.01)
-    Q = torch.randn(N, K, device=device, requires_grad=True)
-    with torch.no_grad(): Q.mul_(0.01)
-    X = torch.zeros(M, L, device=device, requires_grad=True)
+class BPRDataset(Dataset):
+    """Dataset for BPR sampling: yields (u, i_pos, j_neg) tuples."""
+    def __init__(self, R, num_items, num_neg):
+        """
+        R: dense torch.Tensor (M x N), 1 if user interacted, else 0
+        num_items: total number of items N
+        num_neg: number of negatives per positive
+        """
+        self.R = R
+        self.M, self.N = R.shape
+        self.num_neg = num_neg
+        # precompute positive item list per user
+        self.user_pos = [torch.where(self.R[u] > 0)[0].tolist() for u in range(self.M)]
+        # users that have at least one positive
+        self.users = [u for u, pos in enumerate(self.user_pos) if len(pos) > 0]
 
-    optim = torch.optim.Adam([P, Q, X], lr=lr)
-    scheduler = StepLR(optim, step_size=lr_step_size, gamma=lr_gamma)
+    def __len__(self):
+        return len(self.users)
 
-    # 2) 把 Y 转成 dense——若 L 太大请改用稀疏批量方式
-    Y_dense = torch.from_numpy(Y.toarray()).float().to(device)
+    def __getitem__(self, idx):
+        # idx is index into self.users
+        u = self.users[idx]
+        pos_list = self.user_pos[u]
+        i = random.choice(pos_list)
+        # sample negatives
+        negs = []
+        while len(negs) < self.num_neg:
+            j = random.randrange(self.N)
+            if self.R[u, j] == 0:
+                negs.append(j)
+        return u, i, torch.tensor(negs, dtype=torch.long)
 
-    for epoch in tqdm(range(epochs), desc="Training Epochs", unit="epoch"):
-        # 每轮随机打乱用户
-        perm = torch.randperm(M, device=device)
+def bpr_fine_tune(R, W, Y, P, Q, X, epochs=5, lr=1e-3, num_neg=5, batch_size=256, num_workers=4):
+    device = P.device
+    P = P.detach().requires_grad_(True)
+    Q = Q.detach().requires_grad_(True)
+    X = X.detach().requires_grad_(True)
+    optimizer = torch.optim.Adam([P, Q, X], lr=lr)
+    sigmoid = torch.sigmoid
+
+    dataset = BPRDataset(R, R.shape[1], num_neg)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
+                        num_workers=num_workers, pin_memory=True)
+    for epoch in range(epochs):
         total_loss = 0.0
+        for u_batch, pos_batch, neg_batch in loader:
+            u_batch = u_batch.to(device)
+            pos_batch = pos_batch.to(device)
+            neg_batch = neg_batch.to(device)  # shape (batch, num_neg)
 
-        for start in tqdm(range(0, M, batch_size),
-                          desc=f"Epoch {epoch+1}", unit="batch", leave=False):
-            optim.zero_grad()
-            u_batch = perm[start : start + batch_size]
-            B = u_batch.size(0)
+            # compute positive and negative scores in batch
+            P_batch = P[u_batch]            # (batch, K)
+            X_batch = X[u_batch]            # (batch, L)
+            Q_pos = Q[pos_batch]            # (batch, K)
+            Y_pos = Y[pos_batch]            # (batch, L)
+            pos_scores = (P_batch * Q_pos).sum(dim=1) + (X_batch * Y_pos).sum(dim=1)
 
-            # 构造正样本：每个用户随机选一个他实际交互过的 item
-            R_sub = R[u_batch, :].toarray()       # (B, N)
-            pos_idx = []
-            for row in R_sub:
-                nz = np.where(row > 0)[0]
-                pos_idx.append(int(np.random.choice(nz)) if nz.size>0 else int(np.random.randint(N)))
-            pos_idx = torch.LongTensor(pos_idx).to(device)  # (B,)
+            # for negatives, expand P,X to match negs
+            P_expand = P_batch.unsqueeze(1).expand(-1, num_neg, -1)  # (batch, num_neg, K)
+            X_expand = X_batch.unsqueeze(1).expand(-1, num_neg, -1)  # (batch, num_neg, L)
+            Q_neg = Q[neg_batch]            # (batch, num_neg, K)
+            Y_neg = Y[neg_batch]            # (batch, num_neg, L)
+            neg_scores = (P_expand * Q_neg).sum(dim=2) + (X_expand * Y_neg).sum(dim=2)  # (batch, num_neg)
 
-            # 构造多负样本：每个用户采 num_negatives 个随机负样本
-            neg_idx = torch.randint(0, N, (B, num_negatives), device=device)  # (B, num_neg)
-            neg_idx_flat = neg_idx.view(-1)  # (B*num_neg,)
+            # BPR loss
+            diff = pos_scores.unsqueeze(1) - neg_scores
+            loss = -torch.log(sigmoid(diff)).sum()
+            # regularization
+            loss = loss + 1e-4 * (P_batch.pow(2).sum() + Q_pos.pow(2).sum() + Q_neg.pow(2).sum())
+            loss = loss + 1e-5 * X_batch.abs().sum()
 
-            # 取出对应的向量
-            p_u    = P[u_batch]           # (B, K)
-            q_pos  = Q[pos_idx]           # (B, K)
-            q_neg  = Q[neg_idx_flat].view(B, num_negatives, K)  # (B, neg, K)
-            x_u    = X[u_batch]           # (B, L)
-            y_pos  = Y_dense[pos_idx]     # (B, L)
-            y_neg  = Y_dense[neg_idx_flat].view(B, num_negatives, L)  # (B, neg, L)
-
-            # 正/负样本分数
-            pos_scores = (p_u * q_pos).sum(dim=1) + (x_u * y_pos).sum(dim=1)      # (B,)
-            # (B, neg)
-            neg_scores = (p_u.unsqueeze(1) * q_neg).sum(dim=2) \
-                       + (x_u.unsqueeze(1) * y_neg).sum(dim=2)
-
-            # BPR 损失：对每一个负样本对都累加
-            diff = pos_scores.unsqueeze(1) - neg_scores  # (B, neg)
-            bpr_loss = -torch.log(torch.sigmoid(diff) + 1e-8).sum()
-
-            # 正则项
-            reg = gamma * (p_u.pow(2).sum() + 
-                           q_pos.pow(2).sum() +
-                           q_neg.pow(2).sum())
-            l1  = lam   * x_u.abs().sum()
-
-            loss = bpr_loss + reg + l1
+            optimizer.zero_grad()
             loss.backward()
-            # 非负约束
             with torch.no_grad():
-                X.clamp_(min=0)
-            optim.step()
-
+                X[u_batch].clamp_(min=0)
+            optimizer.step()
             total_loss += loss.item()
+        print(f"BPR Epoch {epoch+1}/{epochs}, Loss={total_loss:.4f}")
+    return P, Q, X
 
-        # 每轮结束后衰减学习率
-        scheduler.step()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sample_users', type=int, default=None)
+    parser.add_argument('--sample_items', type=int, default=None)
+    parser.add_argument('--K', type=int, default=50)
+    parser.add_argument('--max_iter', type=int, default=20)
+    parser.add_argument('--gamma', type=float, default=0.01)
+    parser.add_argument('--lam', type=float, default=0.1)
+    parser.add_argument('--eta', type=float, default=1e-3)
+    parser.add_argument('--bpr_epochs', type=int, default=5, help="BPR 微调轮数")
+    parser.add_argument('--bpr_lr', type=float, default=1e-3, help="BPR 学习率")
+    parser.add_argument('--bpr_neg', type=int, default=5, help="每用户负采样数")
+    parser.add_argument('--bpr_batch', type=int, default=256, help="BPR batch size")
+    parser.add_argument('--bpr_workers', type=int, default=4, help="Number of DataLoader workers")
+    args = parser.parse_args()
 
-        tqdm.write(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss:.4f}")
-
-    return P.detach(), Q.detach(), X.detach()
-
-
-def main(args):
-    # 加载分割后的训练集
+    # 加载 & 子采样 & 转 tensor
     R = sp.load_npz('data/processed/R_train.npz')
     W = sp.load_npz('data/processed/W_train.npz')
     Y = sp.load_npz('data/processed/Y.npz')
 
-    # 子集采样
     if args.sample_users:
         R = R[:args.sample_users, :]
         W = W[:args.sample_users, :]
@@ -114,48 +120,28 @@ def main(args):
         Y = Y[:args.sample_items, :]
         print(f"Subsampled to first {args.sample_items} items.")
 
-    M, N = R.shape
-    L    = Y.shape[1]
+    device = torch.device('cpu')
+    R_t = torch.from_numpy(R.toarray()).float().to(device)
+    W_t = torch.from_numpy(W.toarray()).float().to(device)
+    Y_t = torch.from_numpy(Y.toarray()).float().to(device)
 
-    # 训练
-    P_t, Q_t, X_t = train_pytorch_mb(
-        R, W, Y, M, N, L,
-        K=args.K,
-        gamma=args.gamma,
-        lam=args.lam,
-        lr=args.eta,
-        epochs=args.max_iter,
-        batch_size=args.batch_size,
-        num_negatives=args.num_negatives,
-        lr_step_size=args.lr_step_size,
-        lr_gamma=args.lr_gamma,
-        device='cpu'
-    )
+    # 1) 严格论文版训练
+    model = GeoMFPTStrict(K=args.K, gamma=args.gamma, lam=args.lam, eta=args.eta, max_iter=args.max_iter)
+    model.fit(R_t, W_t, Y_t)
+    P, Q, X = model.P, model.Q, model.X
 
-    # 保存结果
-    out = 'data/processed/geomf_model.npz'
-    np.savez(out,
-             P=P_t.cpu().numpy(),
-             Q=Q_t.cpu().numpy(),
-             X=X_t.cpu().numpy())
-    print(f"Training complete. Model saved to {out}")
+    # 2) BPR 微调
+    print("Starting BPR fine-tuning …")
+    P, Q, X = bpr_fine_tune(R_t, W_t, Y_t, P, Q, X,
+                            epochs=args.bpr_epochs,
+                            lr=args.bpr_lr,
+                            num_neg=args.bpr_neg,
+                            batch_size=args.bpr_batch,
+                            num_workers=args.bpr_workers)
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--sample_users',   type=int, default=None)
-    parser.add_argument('--sample_items',   type=int, default=None)
-    parser.add_argument('--K',              type=int,   default=50)
-    parser.add_argument('--max_iter',       type=int,   default=20)
-    parser.add_argument('--gamma',          type=float, default=0.01)
-    parser.add_argument('--lam',            type=float, default=0.1)
-    parser.add_argument('--eta',            type=float, default=1e-3)
-    parser.add_argument('--batch_size',     type=int,   default=4096)
-    parser.add_argument('--num_negatives',  type=int,   default=5,
-                        help="Number of negative samples per user per batch")
-    parser.add_argument('--lr_step_size',   type=int,   default=10,
-                        help="Epoch interval for learning rate decay")
-    parser.add_argument('--lr_gamma',       type=float, default=0.5,
-                        help="Multiplicative factor for LR decay")
-    args = parser.parse_args()
-    main(args)
+    # 保存
+    np.savez('data/processed/geomf_model_hybrid.npz',
+             P=P.detach().cpu().numpy(),
+             Q=Q.detach().cpu().numpy(),
+             X=X.detach().cpu().numpy())
+    print("Hybrid model saved.")

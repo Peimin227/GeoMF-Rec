@@ -3,7 +3,7 @@
 import os
 import numpy as np
 import scipy.sparse as sp
-from scipy.stats import multivariate_normal
+import math
 import argparse
 import yaml
 import json
@@ -31,6 +31,9 @@ def build_Y(biz2idx_path, centers_path, biz2grid_path, config):
     n_lat = len(lat_vals)
     n_lon = len(lon_vals)
 
+    # Earth radius in kilometers
+    R_earth = 6371.0
+
     rows, cols, data = [], [], []
 
     for biz, idx in tqdm(biz2idx.items(), total=N, desc="Building Y rows"):
@@ -49,9 +52,15 @@ def build_Y(biz2idx_path, centers_path, biz2grid_path, config):
                     continue
                 g = ni * n_lon + nj
                 lat_c, lon_c = centers[g]
-                val = multivariate_normal.pdf(
-                    [lat_c, lon_c], mean=[lat0, lon0], cov=[[σ**2, 0], [0, σ**2]]
-                )
+                # compute haversine distance (km) between grid center and biz center
+                lat0_rad, lon0_rad = math.radians(lat0), math.radians(lon0)
+                latc_rad, lonc_rad = math.radians(lat_c), math.radians(lon_c)
+                dlat_rad = latc_rad - lat0_rad
+                dlon_rad = lonc_rad - lon0_rad
+                a = math.sin(dlat_rad/2)**2 + math.cos(lat0_rad) * math.cos(latc_rad) * math.sin(dlon_rad/2)**2
+                dist_km = 2 * R_earth * math.asin(math.sqrt(a))
+                # Gaussian kernel in km; σ is in degrees, so convert to km (approx 111 km/deg)
+                val = math.exp(- (dist_km ** 2) / (2 * (σ * 111.0) ** 2))
                 if val > 0:
                     rows.append(idx)
                     cols.append(g)
