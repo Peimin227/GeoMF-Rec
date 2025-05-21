@@ -17,7 +17,7 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
 
 
 <p align="center">
-  <img src="docs/formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
+  <img src="formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
 </p>
 
 
