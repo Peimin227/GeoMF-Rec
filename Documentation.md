@@ -32,27 +32,27 @@ Final prediction:
 ```mermaid
 flowchart LR
   subgraph Data Preparation
-    A1[review.json & tip.json] -->|inter_matrix.py| R[R matrix]
-    A1 -->|inter_matrix.py| W[W matrix]
-    A2[business.json] -->|grid.py| G[Grid centers & biz2grid]
-    G -->|influence.py| Y[Y matrix]
+    A1[review.json & tip.json] --|"inter_matrix.py"| R[R matrix]
+    A1 --|"inter_matrix.py"| W[W matrix]
+    A2[business.json] --|"grid.py"| G[Grid centers & biz2grid]
+    G --|"influence.py"| Y[Y matrix]
   end
 
   subgraph Data Splitting
-    R & W -->|split.py| R_train[Training R_train]
-    R & W -->|split.py| R_test[Testing R_test]
+    R & W --|"split.py"| R_train[Training R_train]
+    R & W --|"split.py"| R_test[Testing R_test]
   end
 
   subgraph Phase 1: Strict GeoMF
-    R_train & W_train & Y -->|"train.py: GeoMFPTStrict.fit()<br>ALS + PG with tqdm"| P,Q,X
+    R_train & W_train & Y --|"train.py: GeoMFPTStrict.fit()<br>ALS + PG with tqdm"| P,Q,X
   end
 
   subgraph Phase 2: BPR Fine-tuning
-    R_train & P,Q,X -->|"train.py: bpr_fine_tune()<br>DataLoader + Adam"| P',Q',X'
+    R_train & P,Q,X --|"train.py: bpr_fine_tune()<br>DataLoader + Adam"| P',Q',X'
   end
 
   subgraph Evaluation
-    P',Q',X' & R_test -->|evaluate.py| Metrics[Recall@K / Precision@K]
+    P',Q',X' & R_test --|"evaluate.py"| Metrics["Recall@K / Precision@K"]
   end
 ```
 
