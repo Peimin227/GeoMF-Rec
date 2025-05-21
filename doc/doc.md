@@ -13,15 +13,44 @@ In many urban and geographic contexts, POIs tend to cluster spatially. For examp
 - Retail shops group within shopping malls or commercial streets.  
 - Points such as tourist attractions form clusters in historical or scenic neighborhoods.
 
-These clusters reflect underlying human behaviors, urban planning, and natural geography, and motivate incorporating geographic information into recommendation models. Thus, combining this principle with the concept of collaborative filtering, GEOMF has been invented as a new location-based recommendation system.
+These clusters reflect underlying human behaviors, urban planning, and natural geography, and motivate incorporating geographic information into recommendation models. Thus, combining this principle with the concept of collaborative filtering(CF), GEOMF has been invented as a new location-based recommendation system.
 
 
 <p align="center">
   <img src="formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
 </p>
 
+- **Collaborative Filtering Term ($p_u^T q_i$):**
+  - Measures the alignment between user preferences and POI characteristics.
+  - *Example:* If user *u* frequently visits cafes (*p_u* has high values in "cafe-related" dimensions) and POI *i* is a café (*q_i* aligns with those dimensions), this term will be high.
 
-## 2. Overall Workflow Diagram
+- **Geographical Term ($x_u^T y_i$):**
+  - Quantifies the overlap between user *u*'s activity areas and POI *i*'s influence areas.
+  - *Example:* If user *u* often appears in grid *l₁* (*x_u* has a high value at *l₁*) and POI *i* strongly influences *l₁* (*y_i* has a high value at *l₁*), this term will be high.
+
+## 1.1 Critical features & Matrix
+
+| Matrix | Dimensions | Definition | Formula | Role |
+|--------|------------|------------|---------|------|
+| **R** (User-POI Interaction Matrix) | M×N (M users, N POIs) | r<sub>u,i</sub> ∈ {0,1}, indicating if user _u_ visited POI _i_:<br>r<sub>u,i</sub> = 1 if c<sub>u,i</sub> > 0; otherwise 0.<br>c<sub>u,i</sub>: actual visit count. | — | Target matrix for training; model predicts for entries where r<sub>u,i</sub>=0. |
+| **W** (Weight Matrix) | M×N | w<sub>u,i</sub> = 1 + log(1 + c<sub>u,i</sub>) if c<sub>u,i</sub> > 0; otherwise 1.<br>α(c)=log(1+c). | — | Assigns confidence to observed interactions. |
+| **Y** (POI Influence Area Matrix) | N×L | y<sub>i,l</sub> = (1/σ)·K(d(i,l)/σ), where d(i,l) is Euclidean distance, K(z)= (1/√(2π))·exp(−z²/2).<br>σ: bandwidth (e.g., 0.5 km). | — | Quantifies spatial influence of POIs. |
+| **P** (User Latent Factor Matrix) | M×K | p<sub>u</sub> ∈ ℝ<sup>K</sup>, updated via ALS:<br>p<sub>u</sub> = (QᵀW<sub>u</sub>Q + γI)<sup>−1</sup>QᵀW<sub>u</sub>(r<sub>u</sub> − Yx<sub>u</sub>).<br>W<sub>u</sub>: diag(w<sub>u,i</sub>); r<sub>u</sub>: row _u_ of R. | — | Captures users’ latent preferences. |
+| **Q** (POI Latent Factor Matrix) | N×K | q<sub>i</sub> ∈ ℝ<sup>K</sup>, updated via ALS:<br>q<sub>i</sub> = (PᵀW<sub>i</sub>P + γI)<sup>−1</sup>PᵀW<sub>i</sub>(r<sub>i</sub> − Xy<sub>i</sub>).<br>W<sub>i</sub>: diag(w<sub>u,i</sub>); r<sub>i</sub>: column _i_ of R. | — | Captures POIs’ latent features. |
+| **X** (User Activity Area Matrix) | M×L | x<sub>u,l</sub> ≥ 0, updated via projected gradient:<br>x<sub>u</sub>(t+1) = max(0, x<sub>u</sub>(t) − η·∇L(x<sub>u</sub>)).<br>grad = YᵀW<sub>u</sub>(Yx<sub>u</sub> − (r<sub>u</sub> − Qp<sub>u</sub>)) + λ·sign(x<sub>u</sub>). | — | Models users’ spatial activity distribution with sparsity. |
+
+## 2. Symbol Summary Table
+
+| Matrix | Dimensions | Definition                            | Formula                                  | Role                                           |
+|--------|------------|---------------------------------------|------------------------------------------|------------------------------------------------|
+| R      | M×N        | User–POI interaction matrix (0/1)     | r<sub>u,i</sub> = I(c<sub>u,i</sub> > 0)  | Target matrix for training.                    |
+| W      | M×N        | Weight matrix                         | w<sub>u,i</sub> = 1 + log(1 + c<sub>u,i</sub>) | Reflects confidence in observed interactions. |
+| Y      | N×L        | POI influence area matrix             | y<sub>i,l</sub> = (1/σ) K(d(i,l)/σ)       | Quantifies POIs’ spatial influence.           |
+| P      | M×K        | User latent factor matrix             | Updated via ALS                          | Encodes users’ latent preferences.            |
+| Q      | N×K        | POI latent factor matrix              | Updated via ALS                          | Encodes POIs’ latent attributes.              |
+| X      | M×L        | User activity area matrix             | Updated via projected gradient descent   | Models users’ spatial activity patterns.      |
+
+## 3. Overall Workflow Diagram
 
 ```mermaid
 flowchart LR
@@ -52,7 +81,7 @@ flowchart LR
 
 ---
 
-## 3. Features Used and Their Roles
+## 4. Features Used and Their Roles
 
 | Feature               | Source / Script         | Symbol / Shape | Description                                                       | Model Role                         |
 |-----------------------|-------------------------|----------------|-------------------------------------------------------------------|------------------------------------|
@@ -69,13 +98,3 @@ flowchart LR
 | BPR Fine-tuning       | `train.py`              | —              | Pairwise ranking loss with multi-negative sampling and DataLoader | Improves Top-K ranking             |
 
 
-### Symbol Summary Table
-
-| Symbol | Type            | Shape   | Role                                                | Interaction with Other Symbols               |
-|--------|-----------------|---------|-----------------------------------------------------|-----------------------------------------------|
-| R      | Input Data      | M×N     | Ground-truth user–POI interactions (0/1)           | Compared against predicted \~R to compute error |
-| W      | Input Data      | M×N     | Weights for positive/negative samples               | Weight matrix in weighted error computation   |
-| P      | Model Parameter | M×K     | User latent factors capturing interests             | Combined with Q for CF prediction             |
-| Q      | Model Parameter | N×K     | POI latent factors capturing item features          | Combined with P for CF prediction             |
-| X      | Model Parameter | M×L     | User geographic preference distribution             | Combined with Y for geographic prediction      |
-| Y      | Predefined Matrix| N×L    | POI influence over grids (via kernel density)       | Combined with X for geographic prediction      |
