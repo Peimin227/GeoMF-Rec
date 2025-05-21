@@ -4,6 +4,40 @@
 
 GeoMF (Geographical Matrix Factorization) combines traditional collaborative filtering (CF) with geographical preference modeling. The final predicted score for user _u_ and item _i_ is:
 
+### Notation and Key Formulas
+
+**Data Matrices**  
+- **R** ∈ {0,1}<sup>M×N</sup>: user–item interaction matrix, where R<sub>u,i</sub>=1 if user u interacted with item i (from reviews or tips), else 0.  
+- **W** ∈ ℝ<sup>M×N</sup>: interaction weight matrix, defined per entry as  
+  *w<sub>u,i</sub> = 1 + α · ln(1 + count<sub>u,i</sub>)*,  
+  where count<sub>u,i</sub> is the number of interactions (e.g., multiple tips) between u and i.  
+- **Y** ∈ ℝ<sup>N×L</sup>: geographic influence matrix, with  
+  *Y<sub>i,c</sub> = exp(-d(i,c)<sup>2</sup> / (2σ<sup>2</sup>))*,  
+  where d(i,c) is the distance between item i’s coordinates and grid center c.
+
+**Model Factors**  
+- **P** ∈ ℝ<sup>M×K</sup>: user latent factor matrix (CF component).  
+- **Q** ∈ ℝ<sup>N×K</sup>: item latent factor matrix (CF component).  
+- **X** ∈ ℝ<sup>M×L</sup>: user geographic preference matrix over L grids (Geo component).
+
+**Prediction Formula**  
+For user u and item i:  
+```
+r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>
+```
+
+**Optimization Steps**  
+1. **ALS Update (P, Q)**  
+   Solve weighted least squares:  
+   ```
+   P_u = argmin_p ∑_{i} w_{u,i} (R_{u,i} - p^T Q_i - X_u^T Y_i)^2 + γ‖p‖^2
+   ```
+   and similarly for Q<sub>i</sub>.  
+2. **Projected Gradient Update (X)**  
+   ```
+   X_u = Proj_{X_u ≥ 0} [ X_u - η ∇_{X_u} (weighted MSE + λ‖X_u‖_1) ]
+   ```
+
 **r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>**
 
 1. **CF component**  
