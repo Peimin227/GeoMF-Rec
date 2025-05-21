@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-This section introduces the concept of Points of Interest (POIs) and the spatial clustering phenomenon commonly observed in real-world location-based data.
+One of the most important concept of the GEOMF is the Points of Interest (POIs) and the spatial clustering phenomenon commonly observed in real-world location-based data.
 
 **Points of Interest (POIs):**  
 POIs are specific locations or venues—such as restaurants, shops, parks, or landmarks—that users can visit or interact with. Each POI has geographic coordinates (latitude and longitude) and various attributes (e.g., category, rating).
@@ -13,10 +13,11 @@ In many urban and geographic contexts, POIs tend to cluster spatially. For examp
 - Retail shops group within shopping malls or commercial streets.  
 - Points such as tourist attractions form clusters in historical or scenic neighborhoods.
 
-These clusters reflect underlying human behaviors, urban planning, and natural geography, and motivate incorporating geographic information into recommendation models.
+These clusters reflect underlying human behaviors, urban planning, and natural geography, and motivate incorporating geographic information into recommendation models. Thus, combining this principle with the concept of collaborative filtering, GEOMF has been invented as a new location-based recommendation system.
+
 
 <p align="center">
-  <img src="docs/formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
+  <img src="doc/formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
 </p>
 
 We will embed key mathematical formulas as images (PNG) in the next sections.
