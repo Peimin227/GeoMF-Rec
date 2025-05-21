@@ -33,7 +33,7 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
 1. **R (User-POI Interaction Matrix)**  
    - **Dimensions:** M×N (M users, N POIs)  
    <p align="center">
-     <img src="docs/formulas/r_definition_formula.png" alt="R definition formula" width="400"/>
+     <img src="formulas/r_definition_formula.png" alt="R definition formula" width="400"/>
    </p>
    - **Role:** Target matrix for training; model predicts for entries where r_u,i = 0.
 
