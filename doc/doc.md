@@ -32,43 +32,50 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
 
 1. **R (User-POI Interaction Matrix)**  
    - **Dimensions:** M×N (M users, N POIs)  
-   - **Elements:** r_u,i ∈ {0,1}, where  
-     r_u,i = 1 if c_u,i > 0 (user visited POI)  
-     r_u,i = 0 otherwise  
-     (c_u,i is the visit count for user u and POI i)  
+   <p align="center">
+     <img src="docs/formulas/r_definition_formula.png" alt="R definition formula" width="400"/>
+   </p>
    - **Role:** Target matrix for training; model predicts for entries where r_u,i = 0.
 
 2. **W (Weight Matrix)**  
    - **Dimensions:** M×N  
-   - **Formula:** w_u,i = 1 + log(1 + c_u,i) if c_u,i > 0; otherwise 1  
+   <p align="center">
+     <img src="formulas/w_formula.png" alt="W formula" width="400"/>
+   </p>
    - **Role:** Assigns confidence weight to observed interactions.
 
 3. **Y (POI Influence Area Matrix)**  
    - **Dimensions:** N×L (L spatial grids)  
-   - **Formula:** y_i,l = (1/σ)·K(d(i,l)/σ)  
-     - d(i,l) is the Euclidean distance between POI i and grid center l  
-     - K(z) = (1/√(2π))·exp(−z²/2) (Gaussian kernel)  
+   <p align="center">
+     <img src="formulas/y_formula.png" alt="Y formula" width="400"/>
+   </p>
    - **Role:** Models spatial influence of POIs.
 
 4. **P (User Latent Factor Matrix)**  
    - **Dimensions:** M×K (K latent factors)  
+   - **Elements:** 
    - **Update (ALS):**  
-     p_u = (QᵀWᵤQ + γI)⁻¹ QᵀWᵤ (r_u − Yx_u)  
+     <p align="center">
+       <img src="formulas/p_update_formula.png" alt="P update formula" width="400"/>
+     </p>
      where Wᵤ is diag(w_u,i), r_u is row u of R  
    - **Role:** Captures users’ latent preferences.
 
 5. **Q (POI Latent Factor Matrix)**  
    - **Dimensions:** N×K  
    - **Update (ALS):**  
-     q_i = (PᵀWᵢP + γI)⁻¹ PᵀWᵢ (r_i − Xy_i)  
+     <p align="center">
+       <img src="formulas/q_update_formula.png" alt="Q update formula" width="400"/>
+     </p>
      where Wᵢ is diag(w_u,i), r_i is column i of R  
    - **Role:** Captures POIs’ latent features.
 
 6. **X (User Activity Area Matrix)**  
    - **Dimensions:** M×L  
    - **Update (Projected Gradient):**  
-     x_u(t+1) = max(0, x_u(t) − η·grad_u)  
-     grad_u = YᵀWᵤ (Yx_u − (r_u − Qp_u)) + λ·sign(x_u)  
+     <p align="center">
+       <img src="formulas/x_update_formula.png" alt="X update formula" width="400"/>
+     </p>
    - **Role:** Models users’ spatial activity distribution with sparsity.
 
 ## 2. Symbol Summary Table
