@@ -1,3 +1,7 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)]()
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+
 # GeoMF-Rec
 
 Point-of-Interest recommendation via GeoMF (Geographical Matrix Factorization)  
@@ -188,4 +192,10 @@ GeoMF-Rec/
 ## Contact
 
 For issues or questions, please open an issue or contact the maintainer.  
-```
+zhenye2@ualberta.ca 
+
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+zhenye2@ualberta.ca
