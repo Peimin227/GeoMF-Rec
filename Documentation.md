@@ -21,22 +21,30 @@ GeoMF (Geographical Matrix Factorization) combines traditional collaborative fil
 - **X** ∈ ℝ<sup>M×L</sup>: user geographic preference matrix over L grids (Geo component).
 
 **Prediction Formula**  
-For user u and item i:  
-```
-r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>
+For user u and item i:
+
+```text
+r_hat[u,i] = P[u]^T Q[i] + X[u]^T Y[i]
 ```
 
 **Optimization Steps**  
 1. **ALS Update (P, Q)**  
-   Solve weighted least squares:  
+   Solve weighted least squares for each user u (and similarly for each item i):
+
+   ```text
+   P[u] = argmin_p  sum_{i in I_u} w[u,i] * (R[u,i] - p^T Q[i] - X[u]^T Y[i])^2  + gamma * ||p||^2
    ```
-   P_u = argmin_p ∑_{i} w_{u,i} (R_{u,i} - p^T Q_i - X_u^T Y_i)^2 + γ‖p‖^2
-   ```
-   and similarly for Q<sub>i</sub>.  
+
+   where I_u = {i | w[u,i] > 0}.
+
 2. **Projected Gradient Update (X)**  
+   Update each user’s geographic preference:
+
+   ```text
+   X[u] = max(0, X[u] - eta * grad)
    ```
-   X_u = Proj_{X_u ≥ 0} [ X_u - η ∇_{X_u} (weighted MSE + λ‖X_u‖_1) ]
-   ```
+
+   where grad = ∇_{X[u]} [ sum_{i} w[u,i] * (R[u,i] - P[u]^T Q[i] - X[u]^T Y[i])^2  + lambda * ||X[u]||_1 ].
 
 **r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>**
 
