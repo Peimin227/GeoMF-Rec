@@ -32,7 +32,7 @@ pip install -r requirements.txt
 3. Unzip and copy the JSON files into `data/raw/`:
    ```bash
    unzip yelp_academic_dataset.zip -d data/raw/
-4. Since,  `yelp_academic_review.json` and `yelp_academic_tips.json` have similar meaning to our project, we drop the `yelp_academic_tips.json`
+4. Since,  `yelp_academic_checkin.json` and `yelp_academic_tips.json` have similar meaning to our project, we drop the `yelp_academic_checkin.json`
 
 ## Data Preparation
 
