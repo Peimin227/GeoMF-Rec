@@ -1,74 +1,75 @@
 # GeoMF-Rec Documentation
 
-## 1. 方法原理
+## 1. Method Overview
 
-GeoMF 的核心思路是在经典矩阵分解的协同过滤之上，额外引入地理偏好分量，将两者相加得到最终预测：
+GeoMF (Geographical Matrix Factorization) combines traditional collaborative filtering (CF) with geographical preference modeling. The final predicted score for user _u_ and item _i_ is:
 
 **r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>**
 
-1. **CF 分量**  
-   - 对应公式 *r̂<sup>CF</sup><sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub>*。  
-   - P (M×K)，Q (N×K) 分别是用户和商户的 K 维潜在因子。  
-   - 利用加权交替最小二乘（ALS）一步步对每个用户 u 和商户 i 解闭式最小二乘，固定 X, Y 后更新 P, Q。
+1. **CF component**  
+   - Formula: *r̂<sup>CF</sup><sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub>*.  
+   - _P_ is an M×K matrix of user latent factors.  
+   - _Q_ is an N×K matrix of item latent factors.  
+   - We update _P_ and _Q_ using weighted Alternating Least Squares (ALS) while holding _X_ and _Y_ fixed.
 
-2. **Geo 分量**  
-   - 对应公式 *r̂<sup>Geo</sup><sub>u,i</sub> = X<sub>u</sub><sup>T</sup> Y<sub>i</sub>*。  
-   - Y 是商户到 L 个地理格子的影响矩阵，由商户经纬度与格子中心距离经过高斯核计算而来。  
-   - X 是用户对这些格子的偏好分布，使用投影梯度（Projected Gradient）+ L1 正则逐行更新，并截断为非负。
+2. **Geo component**  
+   - Formula: *r̂<sup>Geo</sup><sub>u,i</sub> = X<sub>u</sub><sup>T</sup> Y<sub>i</sub>*.  
+   - _Y_ is an N×L matrix capturing item influence on L geographic grids (computed via Gaussian kernel on distances).  
+   - _X_ is an M×L matrix of user preferences over these grids, updated via projected gradient with L1 regularization and non-negative constraint.
 
-3. **混合优化**  
-   - **第 1 阶段**：严格版 GeoMF（ALS 更新 P, Q + 投影梯度更新 X），最小化加权 MSE + 正则。  
-   - **第 2 阶段**：BPR 微调，针对 Top-K 排序直接优化负采样下的对比损失，用多进程 DataLoader 批量化加速。
+3. **Hybrid optimization**  
+   - **Phase 1**: Strict GeoMF (ALS for _P,Q_ + Projected Gradient for _X_), minimizing weighted MSE plus regularization.  
+   - **Phase 2**: BPR fine-tuning, optimizing a pairwise ranking loss with multi-negative sampling and DataLoader for efficiency.
 
-最终预测：
-
+Final prediction:
+  
 **r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>**
 
 ---
 
-## 2. 整体逻辑图
+## 2. Overall Workflow Diagram
 
 ```mermaid
 flowchart LR
-  subgraph 数据预处理
-    A1[review.json + tip.json] -->|inter_matrix.py| R[R 矩阵]
-    A1 -->|inter_matrix.py| W[W 矩阵]
-    A2[business.json] -->|grid.py| G[格子 Center & biz2grid]
-    G -->|influence.py| Y[Y 矩阵]
+  subgraph Data Preparation
+    A1[review.json & tip.json] -->|inter_matrix.py| R[R matrix]
+    A1 -->|inter_matrix.py| W[W matrix]
+    A2[business.json] -->|grid.py| G[Grid centers & biz2grid]
+    G -->|influence.py| Y[Y matrix]
   end
 
-  subgraph 划分数据
-    R & W -->|split.py| R_train[训练 R_train]
-    R & W -->|split.py| R_test[测试 R_test]
+  subgraph Data Splitting
+    R & W -->|split.py| R_train[Training R_train]
+    R & W -->|split.py| R_test[Testing R_test]
   end
 
-  subgraph 第1阶段：严格 GeoMF
-    R_train & W_train & Y -->|train.py:<br>GeoMFPTStrict.fit()<br>(ALS + PG with tqdm)| P,Q,X
+  subgraph Phase 1: Strict GeoMF
+    R_train & W_train & Y -->|train.py: GeoMFPTStrict.fit()<br>(ALS + PG with tqdm)| P,Q,X
   end
 
-  subgraph 第2阶段：BPR 微调
-    R_train & P,Q,X -->|train.py:bpr_fine_tune()<br>DataLoader + Adam| P',Q',X'
+  subgraph Phase 2: BPR Fine-tuning
+    R_train & P,Q,X -->|train.py: bpr_fine_tune()<br>DataLoader + Adam| P',Q',X'
   end
 
-  subgraph 评估
-    P',Q',X' & R_test -->|evaluate.py| 评估指标[Recall@K / Precision@K]
+  subgraph Evaluation
+    P',Q',X' & R_test -->|evaluate.py| Metrics[Recall@K / Precision@K]
   end
 ```
 
 ---
 
-## 3. 用到的 Feature 及在模型中的作用
+## 3. Features Used and Their Roles
 
-| Feature            | 来源脚本／文件         | 矩阵符号                  | 处理方式／含义                                           | 在模型中的角色                        |
-|--------------------|------------------------|---------------------------|--------------------------------------------------------|---------------------------------------|
-| Review 交互        | `inter_matrix.py`      | R                         | 用户–商户是否有评论/Tip，二值化构稀疏矩阵               | 预测目标 r̂ 的基准                     |
-| 交互权重           | `inter_matrix.py`      | W                         | 1+αln(1+count_ui)                                       | ALS 中加权最小二乘的权重               |
-| 商户经纬度         | `business.json`        | —                         | 解析经纬度，映射到格子中心后算距离                       | 生成地理影响矩阵 Y                     |
-| 地理格子网格       | `grid.py`              | —                         | 划分经纬度平面为 L 个网格，输出网格中心坐标               | 空间编码基准，用于高斯核                |
-| 地理影响矩阵       | `influence.py`         | Y                         | Y_i,c = exp(-d(i,c)^2 / 2σ^2)                           | Geo 分量预测：X_u^T Y_i                |
-| 训练集交互         | `split.py`             | R_train                   | 留出法 per-user split，至少保留 1 条测试交互             | 严格 GeoMF & BPR 训练输入             |
-| 测试集交互         | `split.py`             | R_test                    | 用户–商户测试交互                                       | Recall/Precision 评估                 |
-| 用户潜因子         | `geo_mf.py` (fit)      | P (M×K)                   | ALS 闭式解得到                                        | CF 分量                               |
-| 商户潜因子         | `geo_mf.py` (fit)      | Q (N×K)                   | ALS 闭式解得到                                        | CF 分量                               |
-| 用户地理偏好       | `geo_mf.py` (fit)      | X (M×L)                   | 投影梯度 + L1 正则                                     | Geo 分量                              |
-| BPR 排序微调       | `train.py` (bpr_fine_tune) | —                     | 多负采样 + Adam + DataLoader 批量化                     | Top-K 推荐效果提升                     |
+| Feature               | Source / Script         | Symbol / Shape | Description                                                       | Model Role                         |
+|-----------------------|-------------------------|----------------|-------------------------------------------------------------------|------------------------------------|
+| Review Interactions   | `inter_matrix.py`       | R (M×N)        | Binary user–item interactions derived from reviews & tips         | Ground truth for prediction        |
+| Interaction Weights   | `inter_matrix.py`       | W (M×N)        | $1 + α·ln(1 + count_{ui})$ weighting per interaction              | Weights in weighted ALS            |
+| Item Coordinates      | `business.json`         | —              | Item latitude/longitude mapped to grid centers                    | Building geographic matrix Y       |
+| Geographic Grid       | `grid.py`               | —              | Partition area into L grids, output centers                       | Basis for geographic encoding      |
+| Geographic Matrix     | `influence.py`          | Y (N×L)        | $Y_{i,c}=exp(-d(i,c)^2/(2σ^2))$                                   | Geo component in prediction        |
+| Training Interactions | `split.py`              | R_train (M×N)  | Per-user leave-one-out split, at least one test interaction       | Input for GeoMF & BPR training     |
+| Testing Interactions  | `split.py`              | R_test (M×N)   | Held-out test interactions                                        | Evaluation (Recall/Precision)      |
+| User Latent Factors   | `geo_mf.py` (fit)       | P (M×K)        | Updated by ALS                                                    | CF component                       |
+| Item Latent Factors   | `geo_mf.py` (fit)       | Q (N×K)        | Updated by ALS                                                    | CF component                       |
+| User Geo Preferences  | `geo_mf.py` (fit)       | X (M×L)        | Updated by projected gradient + L1                                | Geo component                      |
+| BPR Fine-tuning       | `train.py`              | —              | Pairwise ranking loss with multi-negative sampling and DataLoader | Improves Top-K ranking             |
