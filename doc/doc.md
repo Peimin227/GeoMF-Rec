@@ -17,12 +17,9 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
 
 
 <p align="center">
-  <img src="GeoMF-Rec/doc/formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
+  <img src="docs/formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
 </p>
 
-We will embed key mathematical formulas as images (PNG) in the next sections.
-
----
 
 ## 2. Overall Workflow Diagram
 
