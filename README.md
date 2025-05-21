@@ -41,9 +41,9 @@ Place the Yelp JSON files under `data/raw/`:
 data/raw/
   ├── business.json
   ├── review.json
-  ├── checkin.json
+  ├── checkin.json # optional
   ├── user.json
-  └── tip.json    # optional
+  └── tip.json    
 ```
 
 1. **Construct interaction matrices**  
