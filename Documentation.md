@@ -44,11 +44,11 @@ flowchart LR
   end
 
   subgraph Phase 1: Strict GeoMF
-    R_train & W_train & Y -->|train.py: GeoMFPTStrict.fit()\n(ALS + PG with tqdm)| P,Q,X
+    R_train & W_train & Y -->|"train.py: GeoMFPTStrict.fit()<br>ALS + PG with tqdm"| P,Q,X
   end
 
   subgraph Phase 2: BPR Fine-tuning
-    R_train & P,Q,X -->|train.py: bpr_fine_tune()\n(DataLoader + Adam)| P',Q',X'
+    R_train & P,Q,X -->|"train.py: bpr_fine_tune()<br>DataLoader + Adam"| P',Q',X'
   end
 
   subgraph Evaluation
