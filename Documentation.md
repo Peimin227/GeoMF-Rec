@@ -1,63 +1,25 @@
 # GeoMF-Rec Documentation
 
-## 1. Method Overview
+## 1. Introduction
 
-GeoMF (Geographical Matrix Factorization) combines traditional collaborative filtering (CF) with geographical preference modeling. The final predicted score for user _u_ and item _i_ is:
+This section introduces the concept of Points of Interest (POIs) and the spatial clustering phenomenon commonly observed in real-world location-based data.
 
-### Notation and Key Formulas
+**Points of Interest (POIs):**  
+POIs are specific locations or venues—such as restaurants, shops, parks, or landmarks—that users can visit or interact with. Each POI has geographic coordinates (latitude and longitude) and various attributes (e.g., category, rating).
 
-**Data Matrices**  
-- **R** ∈ {0,1}<sup>M×N</sup>: user–item interaction matrix, where R<sub>u,i</sub>=1 if user u interacted with item i (from reviews or tips), else 0.  
-- **W** ∈ ℝ<sup>M×N</sup>: interaction weight matrix, defined per entry as  
-  *w<sub>u,i</sub> = 1 + α · ln(1 + count<sub>u,i</sub>)*,  
-  where count<sub>u,i</sub> is the number of interactions (e.g., multiple tips) between u and i.  
-- **Y** ∈ ℝ<sup>N×L</sup>: geographic influence matrix, with  
-  *Y<sub>i,c</sub> = exp(-d(i,c)<sup>2</sup> / (2σ<sup>2</sup>))*,  
-  where d(i,c) is the distance between item i’s coordinates and grid center c.
+**Spatial Clustering Phenomenon:**  
+In many urban and geographic contexts, POIs tend to cluster spatially. For example:  
+- Restaurants often concentrate in dining districts.  
+- Retail shops group within shopping malls or commercial streets.  
+- Points such as tourist attractions form clusters in historical or scenic neighborhoods.
 
-**Model Factors**  
-- **P** ∈ ℝ<sup>M×K</sup>: user latent factor matrix (CF component).  
-- **Q** ∈ ℝ<sup>N×K</sup>: item latent factor matrix (CF component).  
-- **X** ∈ ℝ<sup>M×L</sup>: user geographic preference matrix over L grids (Geo component).
+These clusters reflect underlying human behaviors, urban planning, and natural geography, and motivate incorporating geographic information into recommendation models.
 
-**Prediction Formula**  
-For user *u* and item *i*:  
-r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>
+<p align="center">
+  <img src="docs/formulas/prediction_formula.png" alt="Prediction Formula" width="400"/>
+</p>
 
-**Optimization Steps**
-
-1. **ALS Update (P, Q)**  
-   For each user _u_, we solve the weighted least squares problem:
-
-   P̂<sub>u</sub> = argmin<sub>p</sub> ∑<sub>i ∈ I<sub>u</sub></sub> w<sub>u,i</sub>·(R<sub>u,i</sub> – p<sup>T</sup>Q<sub>i</sub> – X<sub>u</sub><sup>T</sup>Y<sub>i</sub>)<sup>2</sup> + γ·‖p‖<sup>2</sup>
-
-2. **Projected Gradient Update (X)**  
-   For each user _u_, update geographic preference by:
-
-   X̂<sub>u</sub> = max(0, X<sub>u</sub> – η·grad<sub>u</sub>)
-
-   where
-
-   grad<sub>u</sub> = ∇<sub>X<sub>u</sub></sub> [ ∑<sub>i</sub> w<sub>u,i</sub>·(R<sub>u,i</sub> – P<sub>u</sub><sup>T</sup>Q<sub>i</sub> – X<sub>u</sub><sup>T</sup>Y<sub>i</sub>)<sup>2</sup> + λ·‖X<sub>u</sub>‖<sub>1</sub> ]
-
-1. **CF component**  
-   - Formula: *r̂<sup>CF</sup><sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub>*.  
-   - _P_ is an M×K matrix of user latent factors.  
-   - _Q_ is an N×K matrix of item latent factors.  
-   - We update _P_ and _Q_ using weighted Alternating Least Squares (ALS) while holding _X_ and _Y_ fixed.
-
-2. **Geo component**  
-   - Formula: *r̂<sup>Geo</sup><sub>u,i</sub> = X<sub>u</sub><sup>T</sup> Y<sub>i</sub>*.  
-   - _Y_ is an N×L matrix capturing item influence on L geographic grids (computed via Gaussian kernel on distances).  
-   - _X_ is an M×L matrix of user preferences over these grids, updated via projected gradient with L1 regularization and non-negative constraint.
-
-3. **Hybrid optimization**  
-   - **Phase 1**: Strict GeoMF (ALS for _P,Q_ + Projected Gradient for _X_), minimizing weighted MSE plus regularization.  
-   - **Phase 2**: BPR fine-tuning, optimizing a pairwise ranking loss with multi-negative sampling and DataLoader for efficiency.
-
-Final prediction:
-  
-**r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>**
+We will embed key mathematical formulas as images (PNG) in the next sections.
 
 ---
 
