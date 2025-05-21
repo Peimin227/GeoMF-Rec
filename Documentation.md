@@ -107,3 +107,15 @@ flowchart LR
 | Item Latent Factors   | `geo_mf.py` (fit)       | Q (N×K)        | Updated by ALS                                                    | CF component                       |
 | User Geo Preferences  | `geo_mf.py` (fit)       | X (M×L)        | Updated by projected gradient + L1                                | Geo component                      |
 | BPR Fine-tuning       | `train.py`              | —              | Pairwise ranking loss with multi-negative sampling and DataLoader | Improves Top-K ranking             |
+
+
+### Symbol Summary Table
+
+| Symbol | Type            | Shape   | Role                                                | Interaction with Other Symbols               |
+|--------|-----------------|---------|-----------------------------------------------------|-----------------------------------------------|
+| R      | Input Data      | M×N     | Ground-truth user–POI interactions (0/1)           | Compared against predicted \~R to compute error |
+| W      | Input Data      | M×N     | Weights for positive/negative samples               | Weight matrix in weighted error computation   |
+| P      | Model Parameter | M×K     | User latent factors capturing interests             | Combined with Q for CF prediction             |
+| Q      | Model Parameter | N×K     | POI latent factors capturing item features          | Combined with P for CF prediction             |
+| X      | Model Parameter | M×L     | User geographic preference distribution             | Combined with Y for geographic prediction      |
+| Y      | Predefined Matrix| N×L    | POI influence over grids (via kernel density)       | Combined with X for geographic prediction      |
