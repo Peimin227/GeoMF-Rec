@@ -35,8 +35,8 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
    <p align="center">
      <img src="formulas/r_definition_formula.png" alt="R definition formula" width="400"/>
    </p>
-   - Role: Target matrix for training; model predicts for entries where r_u,i = 0.
-   - Brief description:<br/>
+   - Role: Target matrix for training; model predicts for entries where r_u,i = 0.:<br/>
+   - Brief description:
      Binary ground-truth indicator of user visits.
 
 2. **W (Weight Matrix)**  
@@ -44,8 +44,8 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
    <p align="center">
      <img src="formulas/w_formula.png" alt="W formula" width="400"/>
    </p>
-   - Role: Assigns confidence weight to observed interactions.
-   - Brief description:<br/>
+   - Role: Assigns confidence weight to observed interactions.:<br/>
+   - Brief description:
      Confidence weight reflecting interaction frequency.
 
 3. **Y (POI Influence Area Matrix)**  
@@ -53,8 +53,8 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
    <p align="center">
      <img src="formulas/y_formula.png" alt="Y formula" width="400"/>
    </p>
-   - Role: Models spatial influence of POIs.
-   - Brief description:<br/>
+   - Role: Models spatial influence of POIs.:<br/>
+   - Brief description:
      Spatial kernel-based influence of POIs over grids.
 
 4. **P (User Latent Factor Matrix)**  
@@ -65,8 +65,8 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
        <img src="formulas/p_update_formula.png" alt="P update formula" width="400"/>
      </p>
      where Wᵤ is diag(w_u,i), r_u is row u of R  
-   - Role: Captures users’ latent preferences.
-   - Brief description:<br/>
+   - Role: Captures users’ latent preferences.:<br/>
+   - Brief description:
      Encodes user preferences in latent space.
 
 5. **Q (POI Latent Factor Matrix)**  
@@ -76,8 +76,8 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
        <img src="formulas/q_update_formula.png" alt="Q update formula" width="400"/>
      </p>
      where Wᵢ is diag(w_u,i), r_i is column i of R  
-   - Role: Captures POIs’ latent features.
-   - Brief description:<br/>
+   - Role: Captures POIs’ latent features.:<br/>
+   - Brief description:
      Encodes POI attributes in latent space.
 
 6. **X (User Activity Area Matrix)**  
@@ -86,8 +86,8 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
      <p align="center">
        <img src="formulas/x_update_formula.png" alt="X update formula" width="400"/>
      </p>
-   - Role: Models users’ spatial activity distribution with sparsity.
-   - Brief description:<br/>
+   - Role: Models users’ spatial activity distribution with sparsity.:<br/>
+   - Brief description:
      Captures users' geographic activity patterns.
 
 ## 2. Symbol Summary Table
