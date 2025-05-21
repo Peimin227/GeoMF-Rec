@@ -90,6 +90,31 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
    - Brief description:
      Captures users' geographic activity patterns.
 
+
+
+## 1.2 Mapping Yelp Data to R, W, Y and Learning P, Q, X
+
+We leverage the Yelp dataset files to construct the key matrices and learn the model factors:
+
+1. **Building R and W from Reviews & Tips**  
+   - We parse `review.json` and `tip.json` line by line. Each record contains `user_id`, `business_id`, and interaction count.  
+   - **R** is a sparse binary matrix of shape M×N, where M is the number of users and N the number of businesses. We set R[u,i]=1 if user u has at least one review or tip for business i.  
+   - **W** is the same shape M×N. We compute W[u,i] = 1 + log(1 + count_{u,i}), where count_{u,i} is the total number of reviews and tips by user u for business i. This weighting emphasizes more frequent interactions.
+
+2. **Constructing Y from Business Locations**  
+   - We read `business.json` to extract each POI’s latitude and longitude.  
+   - We overlay an L-cell geographic grid over the entire region and compute distances from each POI to each grid center.  
+   - **Y** is an N×L dense matrix where Y[i,l] = exp(−d(i,l)² / (2σ²)), optionally truncated beyond a radius. This encodes each POI’s spatial influence.
+
+3. **Training P, Q, X**  
+   - Using the processed R_train, W_train (obtained via `split.py`), and Y, we call `GeoMFPTStrict.fit()`.  
+   - The algorithm alternates between:  
+     a. **ALS** on R_train and W_train to update user factors P (M×K) and item factors Q (N×K).  
+     b. **Projected Gradient** on R_train, W_train, and Y to update geographic preferences X (M×L), enforcing non-negativity and sparsity.  
+   - Finally, we perform BPR fine-tuning on (R_train, P, Q, X) to directly optimize pairwise ranking.
+
+With these steps, the raw Yelp interactions and POI locations seamlessly feed into R, W, Y and yield the final model parameters P, Q, and X.
+
 ## 2. Symbol Summary Table
 
 | Matrix | Dimensions | Definition                            | Formula                                  | Role                                           |
