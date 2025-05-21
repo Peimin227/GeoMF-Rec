@@ -59,7 +59,6 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
 
 4. **P (User Latent Factor Matrix)**  
    - **Dimensions:** M×K (K latent factors)  
-   - **Elements:** 
    - **Update (ALS):**  
      <p align="center">
        <img src="formulas/p_update_formula.png" alt="P update formula" width="400"/>
