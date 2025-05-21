@@ -30,14 +30,46 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
 
 ## 1.1 Critical features & Matrix
 
-| Matrix | Dimensions | Definition | Formula | Role |
-|--------|------------|------------|---------|------|
-| **R** (User-POI Interaction Matrix) | M×N (M users, N POIs) | r<sub>u,i</sub> ∈ {0,1}, indicating if user _u_ visited POI _i_:<br>r<sub>u,i</sub> = 1 if c<sub>u,i</sub> > 0; otherwise 0.<br>c<sub>u,i</sub>: actual visit count. | — | Target matrix for training; model predicts for entries where r<sub>u,i</sub>=0. |
-| **W** (Weight Matrix) | M×N | w<sub>u,i</sub> = 1 + log(1 + c<sub>u,i</sub>) if c<sub>u,i</sub> > 0; otherwise 1.<br>α(c)=log(1+c). | — | Assigns confidence to observed interactions. |
-| **Y** (POI Influence Area Matrix) | N×L | y<sub>i,l</sub> = (1/σ)·K(d(i,l)/σ), where d(i,l) is Euclidean distance, K(z)= (1/√(2π))·exp(−z²/2).<br>σ: bandwidth (e.g., 0.5 km). | — | Quantifies spatial influence of POIs. |
-| **P** (User Latent Factor Matrix) | M×K | p<sub>u</sub> ∈ ℝ<sup>K</sup>, updated via ALS:<br>p<sub>u</sub> = (QᵀW<sub>u</sub>Q + γI)<sup>−1</sup>QᵀW<sub>u</sub>(r<sub>u</sub> − Yx<sub>u</sub>).<br>W<sub>u</sub>: diag(w<sub>u,i</sub>); r<sub>u</sub>: row _u_ of R. | — | Captures users’ latent preferences. |
-| **Q** (POI Latent Factor Matrix) | N×K | q<sub>i</sub> ∈ ℝ<sup>K</sup>, updated via ALS:<br>q<sub>i</sub> = (PᵀW<sub>i</sub>P + γI)<sup>−1</sup>PᵀW<sub>i</sub>(r<sub>i</sub> − Xy<sub>i</sub>).<br>W<sub>i</sub>: diag(w<sub>u,i</sub>); r<sub>i</sub>: column _i_ of R. | — | Captures POIs’ latent features. |
-| **X** (User Activity Area Matrix) | M×L | x<sub>u,l</sub> ≥ 0, updated via projected gradient:<br>x<sub>u</sub>(t+1) = max(0, x<sub>u</sub>(t) − η·∇L(x<sub>u</sub>)).<br>grad = YᵀW<sub>u</sub>(Yx<sub>u</sub> − (r<sub>u</sub> − Qp<sub>u</sub>)) + λ·sign(x<sub>u</sub>). | — | Models users’ spatial activity distribution with sparsity. |
+1. **R (User-POI Interaction Matrix)**  
+   - **Dimensions:** M×N (M users, N POIs)  
+   - **Elements:** r_u,i ∈ {0,1}, where  
+     r_u,i = 1 if c_u,i > 0 (user visited POI)  
+     r_u,i = 0 otherwise  
+     (c_u,i is the visit count for user u and POI i)  
+   - **Role:** Target matrix for training; model predicts for entries where r_u,i = 0.
+
+2. **W (Weight Matrix)**  
+   - **Dimensions:** M×N  
+   - **Formula:** w_u,i = 1 + log(1 + c_u,i) if c_u,i > 0; otherwise 1  
+   - **Role:** Assigns confidence weight to observed interactions.
+
+3. **Y (POI Influence Area Matrix)**  
+   - **Dimensions:** N×L (L spatial grids)  
+   - **Formula:** y_i,l = (1/σ)·K(d(i,l)/σ)  
+     - d(i,l) is the Euclidean distance between POI i and grid center l  
+     - K(z) = (1/√(2π))·exp(−z²/2) (Gaussian kernel)  
+   - **Role:** Models spatial influence of POIs.
+
+4. **P (User Latent Factor Matrix)**  
+   - **Dimensions:** M×K (K latent factors)  
+   - **Update (ALS):**  
+     p_u = (QᵀWᵤQ + γI)⁻¹ QᵀWᵤ (r_u − Yx_u)  
+     where Wᵤ is diag(w_u,i), r_u is row u of R  
+   - **Role:** Captures users’ latent preferences.
+
+5. **Q (POI Latent Factor Matrix)**  
+   - **Dimensions:** N×K  
+   - **Update (ALS):**  
+     q_i = (PᵀWᵢP + γI)⁻¹ PᵀWᵢ (r_i − Xy_i)  
+     where Wᵢ is diag(w_u,i), r_i is column i of R  
+   - **Role:** Captures POIs’ latent features.
+
+6. **X (User Activity Area Matrix)**  
+   - **Dimensions:** M×L  
+   - **Update (Projected Gradient):**  
+     x_u(t+1) = max(0, x_u(t) − η·grad_u)  
+     grad_u = YᵀWᵤ (Yx_u − (r_u − Qp_u)) + λ·sign(x_u)  
+   - **Role:** Models users’ spatial activity distribution with sparsity.
 
 ## 2. Symbol Summary Table
 
