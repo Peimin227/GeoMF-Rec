@@ -35,21 +35,21 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
    <p align="center">
      <img src="formulas/r_definition_formula.png" alt="R definition formula" width="400"/>
    </p>
-   - **Role:** Target matrix for training; model predicts for entries where r_u,i = 0.
+   - Role: Target matrix for training; model predicts for entries where r_u,i = 0.
 
 2. **W (Weight Matrix)**  
    - **Dimensions:** M×N  
    <p align="center">
      <img src="formulas/w_formula.png" alt="W formula" width="400"/>
    </p>
-   - **Role:** Assigns confidence weight to observed interactions.
+   - Role: Assigns confidence weight to observed interactions.
 
 3. **Y (POI Influence Area Matrix)**  
    - **Dimensions:** N×L (L spatial grids)  
    <p align="center">
      <img src="formulas/y_formula.png" alt="Y formula" width="400"/>
    </p>
-   - **Role:** Models spatial influence of POIs.
+   - Role: Models spatial influence of POIs.
 
 4. **P (User Latent Factor Matrix)**  
    - **Dimensions:** M×K (K latent factors)  
@@ -59,7 +59,7 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
        <img src="formulas/p_update_formula.png" alt="P update formula" width="400"/>
      </p>
      where Wᵤ is diag(w_u,i), r_u is row u of R  
-   - **Role:** Captures users’ latent preferences.
+   - Role: Captures users’ latent preferences.
 
 5. **Q (POI Latent Factor Matrix)**  
    - **Dimensions:** N×K  
@@ -68,7 +68,7 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
        <img src="formulas/q_update_formula.png" alt="Q update formula" width="400"/>
      </p>
      where Wᵢ is diag(w_u,i), r_i is column i of R  
-   - **Role:** Captures POIs’ latent features.
+   - Role: Captures POIs’ latent features.
 
 6. **X (User Activity Area Matrix)**  
    - **Dimensions:** M×L  
@@ -76,7 +76,7 @@ These clusters reflect underlying human behaviors, urban planning, and natural g
      <p align="center">
        <img src="formulas/x_update_formula.png" alt="X update formula" width="400"/>
      </p>
-   - **Role:** Models users’ spatial activity distribution with sparsity.
+   - Role: Models users’ spatial activity distribution with sparsity.
 
 ## 2. Symbol Summary Table
 
