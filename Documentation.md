@@ -21,11 +21,8 @@ GeoMF (Geographical Matrix Factorization) combines traditional collaborative fil
 - **X** ∈ ℝ<sup>M×L</sup>: user geographic preference matrix over L grids (Geo component).
 
 **Prediction Formula**  
-For user u and item i:
-
-```text
-r_hat[u,i] = P[u]^T Q[i] + X[u]^T Y[i]
-```
+For user *u* and item *i*:  
+r̂<sub>u,i</sub> = P<sub>u</sub><sup>T</sup> Q<sub>i</sub> + X<sub>u</sub><sup>T</sup> Y<sub>i</sub>
 
 **Optimization Steps**  
 1. **ALS Update (P, Q)**  
