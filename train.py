@@ -105,7 +105,7 @@ if __name__ == "__main__":
     parser.add_argument('--bpr_workers', type=int, default=4, help="Number of DataLoader workers")
     args = parser.parse_args()
 
-    # 加载 & 子采样 & 转 tensor
+    
     R = sp.load_npz('data/processed/R_train.npz')
     W = sp.load_npz('data/processed/W_train.npz')
     Y = sp.load_npz('data/processed/Y.npz')
@@ -125,7 +125,6 @@ if __name__ == "__main__":
     W_t = torch.from_numpy(W.toarray()).float().to(device)
     Y_t = torch.from_numpy(Y.toarray()).float().to(device)
 
-    # 1) 严格论文版训练
     model = GeoMFPTStrict(K=args.K, gamma=args.gamma, lam=args.lam, eta=args.eta, max_iter=args.max_iter)
     model.fit(R_t, W_t, Y_t)
     P, Q, X = model.P, model.Q, model.X
@@ -139,7 +138,7 @@ if __name__ == "__main__":
                             batch_size=args.bpr_batch,
                             num_workers=args.bpr_workers)
 
-    # 保存
+   
     np.savez('data/processed/geomf_model_hybrid.npz',
              P=P.detach().cpu().numpy(),
              Q=Q.detach().cpu().numpy(),

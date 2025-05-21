@@ -92,37 +92,47 @@ data/raw/
 
 ## Model Training
 
+The project now uses a two-phase hybrid training:
+1. **Strict GeoMF** (ALS + projected gradient) as per the paper.
+2. **BPR fine-tuning** (mini-batch, multi-negative sampling) for ranking.
+
 Use `train.py` with the following options:
 
-| Argument         | Description                              | Default |
-|------------------|------------------------------------------|---------|
-| `--sample_users` | Subsample first N users for debugging    | —       |
-| `--sample_items` | Subsample first N items for debugging    | —       |
-| `--K`            | Latent factor dimension                  | 50      |
-| `--max_iter`     | Number of training epochs                | 20      |
-| `--gamma`        | L2 regularization coefficient (γ)        | 0.01    |
-| `--lam`          | L1 regularization coefficient (λ)        | 0.1     |
-| `--eta`          | Learning rate                            | 1e-3    |
-| `--batch_size`   | Mini-batch size                          | 4096    |
-| `--num_negatives`| Negative samples per user per batch      | 5       |
-| `--lr_step_size` | Epoch interval for learning rate decay   | 10      |
-| `--lr_gamma`     | Learning rate decay factor               | 0.5     |
+| Argument           | Description                                           | Default |
+|--------------------|-------------------------------------------------------|---------|
+| `--sample_users`   | Subsample first N users for debugging                 | —       |
+| `--sample_items`   | Subsample first N items for debugging                 | —       |
+| `--K`              | Latent factor dimension                               | 50      |
+| `--max_iter`       | Alternating ALS+PG iterations for strict GeoMF        | 20      |
+| `--gamma`          | L2 regularization coefficient (γ) for P and Q         | 0.01    |
+| `--lam`            | L1 regularization coefficient (λ) for X               | 0.1     |
+| `--eta`            | Learning rate for X projected gradient                | 1e-3    |
+| **BPR fine-tuning**|||| 
+| `--bpr_epochs`     | Number of BPR fine-tuning epochs                      | 5       |
+| `--bpr_lr`         | Learning rate for BPR optimizer                       | 1e-3    |
+| `--bpr_neg`        | Negative samples per user in BPR                      | 5       |
+| `--bpr_batch`      | Batch size for BPR DataLoader                         | 256     |
+| `--bpr_workers`    | Number of DataLoader worker processes                 | 4       |
 
-Example (1000×1000 subset):
+Example (5k×5k subset, hybrid training):
 
 ```bash
 python train.py \
-  --sample_users 1000 \
-  --sample_items 1000 \
+  --sample_users 5000 \
+  --sample_items 5000 \
   --K 100 \
-  --max_iter 40 \
-  --batch_size 4096 \
-  --num_negatives 5 \
-  --lr_step_size 10 \
-  --lr_gamma 0.5
+  --max_iter 20 \
+  --gamma 0.01 \
+  --lam 0.1 \
+  --eta 1e-3 \
+  --bpr_epochs 5 \
+  --bpr_lr 1e-3 \
+  --bpr_neg 5 \
+  --bpr_batch 512 \
+  --bpr_workers 4
 ```
 
-Training shows per-epoch and per-batch progress bars, and logs the training loss.
+The script first runs strict GeoMF (ALS + PG with `tqdm` progress bar), then performs BPR fine-tuning using a multi-worker `DataLoader` for efficient negative sampling and gradient updates.
 
 ---
 
